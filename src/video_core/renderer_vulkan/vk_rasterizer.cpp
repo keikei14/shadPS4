@@ -252,10 +252,8 @@ void Rasterizer::BeginRendering(const GraphicsPipeline& pipeline) {
                                                           .stencil = regs.stencil_clear}},
         };
         texture_cache.TouchMeta(htile_address, false);
-        state.has_depth =
-            regs.depth_buffer.z_info.format != AmdGpu::Liverpool::DepthBuffer::ZFormat::Invalid;
-        state.has_stencil = regs.depth_buffer.stencil_info.format !=
-                            AmdGpu::Liverpool::DepthBuffer::StencilFormat::Invalid;
+        state.has_depth = image.info.usage.depth_target;
+        state.has_stencil = image.info.usage.stencil;
     }
     scheduler.BeginRendering(state);
 }

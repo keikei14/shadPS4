@@ -124,14 +124,14 @@ ImageId TextureCache::ResolveDepthOverlap(const ImageInfo& requested_info, Image
 ImageId TextureCache::ResolveOverlap(const ImageInfo& image_info, ImageId cache_image_id,
                                      ImageId merged_image_id) {
     auto& tex_cache_image = slot_images[cache_image_id];
+    // We can assume it is safe to delete the image if it wasn't accessed in some amount of frames.
+    const bool safe_to_delete =
+        scheduler.CurrentTick() - tex_cache_image.tick_accessed_last > NumFramesBeforeRemoval;
 
     if (image_info.guest_address == tex_cache_image.info.guest_address) { // Equal address
         if (image_info.size != tex_cache_image.info.size) {
-            // Very likely this kind of overlap is caused by allocation from a pool. We can assume
-            // it is safe to delete the image if it wasn't accessed in some amount of frames.
-            if (scheduler.CurrentTick() - tex_cache_image.tick_accessed_last >
-                NumFramesBeforeRemoval) {
-
+            // Very likely this kind of overlap is caused by allocation from a pool.
+            if (safe_to_delete) {
                 FreeImage(cache_image_id);
             }
             return merged_image_id;
@@ -161,7 +161,19 @@ ImageId TextureCache::ResolveOverlap(const ImageInfo& image_info, ImageId cache_
 
     // Right overlap, the image requested is a possible subresource of the image from cache.
     if (image_info.guest_address > tex_cache_image.info.guest_address) {
-        // Should be handled by view. No additional actions needed.
+        if (image_info.IsMipOf(tex_cache_image.info)) {
+            return cache_image_id;
+        }
+
+        if (image_info.IsSliceOf(tex_cache_image.info)) {
+            return cache_image_id;
+        }
+
+        if (safe_to_delete) {
+            FreeImage(cache_image_id);
+        }
+
+        return {};
     } else {
         // Left overlap, the image from cache is a possible subresource of the image requested
         if (!merged_image_id) {
@@ -249,6 +261,17 @@ ImageId TextureCache::FindImage(const ImageInfo& info, FindFlags flags) {
         for (const auto& cache_id : image_ids) {
             const auto& merged_info = image_id ? slot_images[image_id].info : info;
             image_id = ResolveOverlap(merged_info, cache_id, image_id);
+        }
+    }
+
+    if (image_id) {
+        Image& image_resoved = slot_images[image_id];
+
+        // A kill switch for a case if overlap resolve failed
+        if (image_resoved.info.resources < info.resources) {
+            FreeImage(image_id);
+            image_id = {};
+            LOG_WARNING(Render_Vulkan, "Image overlap resolve failed");
         }
     }
 
