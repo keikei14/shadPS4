@@ -21,10 +21,23 @@ namespace Libraries::Net {
 
 using OrbisNetId = s32;
 
+constexpr u32 ORBIS_NET_MSG_PEEK = 0x00000002;
+constexpr u32 ORBIS_NET_MSG_WAITALL = 0x00000040;
+constexpr u32 ORBIS_NET_MSG_DONTWAIT = 0x00000080;
+constexpr u32 ORBIS_NET_MSG_PEEKLEN = 0x00400000 | ORBIS_NET_MSG_PEEK;
+
 struct OrbisNetSockaddr {
     u8 sa_len;
     u8 sa_family;
     char sa_data[14];
+};
+
+enum SocketType : int {
+    SCE_NET_SOCK_STREAM = 1,
+    SCE_NET_SOCK_DGRAM,
+    SCE_NET_SOCK_RAW,
+    SCE_NET_SOCK_DGRAM_P2P = 6,
+    SCE_NET_SOCK_STREAM_P2P = 10,
 };
 
 int PS4_SYSV_ABI in6addr_any();
@@ -187,7 +200,7 @@ int PS4_SYSV_ABI sceNetPoolCreate(const char* name, int size, int flags);
 int PS4_SYSV_ABI sceNetPoolDestroy();
 int PS4_SYSV_ABI sceNetPppoeStart();
 int PS4_SYSV_ABI sceNetPppoeStop();
-int PS4_SYSV_ABI sceNetRecv();
+int PS4_SYSV_ABI sceNetRecv(OrbisNetId s, void* buf, size_t len, int flags);
 int PS4_SYSV_ABI sceNetRecvfrom(OrbisNetId s, void* buf, size_t len, int flags,
                                 OrbisNetSockaddr* addr, u32* paddrlen);
 int PS4_SYSV_ABI sceNetRecvmsg();
@@ -230,7 +243,7 @@ int PS4_SYSV_ABI sceNetShowRoute6WithMemory();
 int PS4_SYSV_ABI sceNetShowRouteForBuffer();
 int PS4_SYSV_ABI sceNetShowRouteWithMemory();
 int PS4_SYSV_ABI sceNetShutdown();
-int PS4_SYSV_ABI sceNetSocket(const char* name, int family, int type, int protocol);
+int PS4_SYSV_ABI sceNetSocket(const char* name, int family, SocketType type, int protocol);
 int PS4_SYSV_ABI sceNetSocketAbort();
 int PS4_SYSV_ABI sceNetSocketClose();
 int PS4_SYSV_ABI sceNetSyncCreate();

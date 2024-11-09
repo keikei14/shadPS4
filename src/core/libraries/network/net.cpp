@@ -3,9 +3,13 @@
 
 #ifdef WIN32
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
+
+#include <mutex>
 #include <Ws2tcpip.h>
 #include <iphlpapi.h>
+#include <magic_enum.hpp>
 #include <winsock2.h>
+
 #else
 #include <arpa/inet.h>
 #endif
@@ -15,8 +19,18 @@
 #include "core/libraries/error_codes.h"
 #include "core/libraries/libs.h"
 #include "core/libraries/network/net.h"
+#include "core/libraries/network/net_error.h"
 
 namespace Libraries::Net {
+
+static constexpr uint8_t MAX_SOCKET_COUNT = 128;
+
+struct NetDevice {
+    std::array<SOCKET, MAX_SOCKET_COUNT> sockets;
+    // TODO: Handle aborted sockets
+};
+
+static std::unique_ptr<NetDevice> dev{};
 
 static thread_local int32_t net_errno = 0;
 
@@ -829,9 +843,41 @@ int PS4_SYSV_ABI sceNetPppoeStop() {
     return ORBIS_OK;
 }
 
-int PS4_SYSV_ABI sceNetRecv() {
-    LOG_ERROR(Lib_Net, "(STUBBED) called");
-    return ORBIS_OK;
+int PS4_SYSV_ABI sceNetRecv(OrbisNetId s, void* buf, size_t len, int flags) {
+    // TODO: Check if socket id is marked as aborted
+
+    if (dev->sockets.size() < s) {
+        LOG_ERROR(Lib_Net, "Invalid socket id {}", s);
+        return ORBIS_NET_ERROR_EBADF;
+    }
+
+    if (!buf) {
+        LOG_ERROR(Lib_Net, "Invalid buffer");
+        return ORBIS_NET_ERROR_EFAULT;
+    }
+
+    int winsock_flags = 0;
+
+    if (flags & ORBIS_NET_MSG_PEEK) {
+        LOG_INFO(Lib_Net, "ORBIS_NET_MSG_PEEK");
+        winsock_flags |= MSG_PEEK;
+    } else if (flags & ORBIS_NET_MSG_WAITALL) {
+        LOG_INFO(Lib_Net, "ORBIS_NET_MSG_WAITALL");
+        winsock_flags |= MSG_WAITALL;
+    }
+
+    int ret = recv(s, static_cast<char*>(buf), len, winsock_flags);
+
+    if (ret == 0) {
+        LOG_ERROR(Lib_Net, "Connection closed");
+        return ORBIS_NET_ERROR_ECONNRESET;
+    }
+
+    if (ret < 0) {
+        UNREACHABLE_MSG("rect failed: {}", WSAGetLastError());
+    }
+
+    return ret;
 }
 
 int PS4_SYSV_ABI sceNetRecvfrom(OrbisNetId s, void* buf, size_t len, int flags,
@@ -1040,9 +1086,26 @@ int PS4_SYSV_ABI sceNetShutdown() {
     return ORBIS_OK;
 }
 
-int PS4_SYSV_ABI sceNetSocket(const char* name, int family, int type, int protocol) {
-    LOG_ERROR(Lib_Net, "(STUBBED) called");
-    return ORBIS_OK;
+int PS4_SYSV_ABI sceNetSocket(const char* name, int family, SocketType type, int protocol) {
+    LOG_INFO(Lib_Net, "called, name = {}, family = {}, type = {}, protocol = {}", name, family,
+             magic_enum::enum_name(type), protocol);
+
+    if (dev->sockets.size() == MAX_SOCKET_COUNT) {
+        return ORBIS_NET_ERROR_EMFILE;
+    }
+
+    if (type == SCE_NET_SOCK_DGRAM_P2P || type == SCE_NET_SOCK_STREAM_P2P) {
+        // Peer-to-peer is not supported
+        return ORBIS_NET_ERROR_EPROTOTYPE;
+    }
+
+    SOCKET id = socket(family, type, protocol);
+    ASSERT_MSG(id != INVALID_SOCKET, "socket function failed, ret = {}", WSAGetLastError());
+
+    dev->sockets[dev->sockets.size() + 1] = id;
+    LOG_TRACE(Lib_Net, "socket created, id = {}", id);
+
+    return static_cast<int>(id);
 }
 
 int PS4_SYSV_ABI sceNetSocketAbort() {
@@ -1051,7 +1114,7 @@ int PS4_SYSV_ABI sceNetSocketAbort() {
 }
 
 int PS4_SYSV_ABI sceNetSocketClose() {
-    LOG_ERROR(Lib_Net, "(STUBBED) called");
+
     return ORBIS_OK;
 }
 
