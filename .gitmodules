@@ -102,3 +102,6 @@
 [submodule "externals/LibAtrac9"]
 	path = externals/LibAtrac9
 	url = https://github.com/shadps4-emu/ext-LibAtrac9.git
+[submodule "externals/SDL_mixer"]
+	path = externals/SDL_mixer
+	url = https://github.com/libsdl-org/SDL_mixer.git
