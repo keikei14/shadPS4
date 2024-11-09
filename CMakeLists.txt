@@ -308,6 +308,9 @@ set(SYSTEM_LIBS src/core/libraries/system/commondialog.cpp
                 src/core/libraries/remote_play/remoteplay.h
                 src/core/libraries/share_play/shareplay.cpp
                 src/core/libraries/share_play/shareplay.h
+                src/core/libraries/reg_mgr/reg_mgr.cpp
+                src/core/libraries/reg_mgr/reg_mgr.h
+                src/core/libraries/reg_mgr/ent_keys.h
 )
 
 set(VIDEOOUT_LIB src/core/libraries/videoout/buffer.h
