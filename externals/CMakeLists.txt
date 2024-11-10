@@ -11,26 +11,26 @@ set_directory_properties(PROPERTIES
 if (MSVC)
     # Silence "deprecation" warnings
     add_definitions(-D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE -D_SCL_SECURE_NO_WARNINGS)
-endif()
+endif ()
 
 # Boost
 if (NOT TARGET Boost::headers)
     set(BOOST_ROOT "${CMAKE_SOURCE_DIR}/externals/ext-boost" CACHE STRING "")
     set(Boost_NO_SYSTEM_PATHS ON CACHE BOOL "")
     add_subdirectory(ext-boost)
-endif()
+endif ()
 
 # fmtlib
 if (NOT TARGET fmt::fmt)
     add_subdirectory(fmt)
-endif()
+endif ()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND MSVC)
     # If it is clang and MSVC we will add a static lib
     # CryptoPP
     add_subdirectory(cryptoppwin)
     target_include_directories(cryptoppwin INTERFACE cryptoppwin/include)
-else()
+else ()
     # CryptoPP
     if (NOT TARGET cryptopp::cryptopp)
         set(CRYPTOPP_INSTALL OFF)
@@ -39,13 +39,13 @@ else()
         add_subdirectory(cryptopp-cmake)
         file(COPY cryptopp DESTINATION cryptopp FILES_MATCHING PATTERN "*.h")
         target_include_directories(cryptopp INTERFACE "${CMAKE_CURRENT_BINARY_DIR}/cryptopp")
-    endif()
-endif()
+    endif ()
+endif ()
 
 if (NOT TARGET FFmpeg::ffmpeg)
     add_subdirectory(ffmpeg-core)
     add_library(FFmpeg::ffmpeg ALIAS ffmpeg)
-endif()
+endif ()
 
 # LibAtrac9
 file(GLOB LIBATRAC9_SOURCES LibAtrac9/C/src/*.c)
@@ -60,31 +60,41 @@ if (NOT TARGET zlib-ng::zlib)
     set(WITH_NATIVE_INSTRUCTIONS ON)
     add_subdirectory(zlib-ng)
     add_library(zlib-ng::zlib ALIAS zlib)
-endif()
+endif ()
 
 # SDL3
 if (NOT TARGET SDL3::SDL3)
     set(SDL_PIPEWIRE OFF)
     add_subdirectory(sdl3)
-endif()
+endif ()
+
+# SDL_mixer
+if (NOT TARGET SDL3_mixer::SDL3_mixer)
+    # Disable unused formats
+    set(SDLMIXER_FLAC OFF)
+    set(SDLMIXER_MIDI OFF)
+    set(SDLMIXER_OPUS OFF)
+    set(SDLMIXER_WAVPACK OFF)
+    add_subdirectory(SDL_mixer)
+endif ()
 
 # vulkan-headers
 if (NOT TARGET Vulkan::Headers)
     set(VULKAN_HEADERS_ENABLE_MODULE OFF)
     add_subdirectory(vulkan-headers)
-endif()
+endif ()
 
 # VMA
 if (NOT TARGET GPUOpen::VulkanMemoryAllocator)
     add_subdirectory(vma)
-endif()
+endif ()
 
 # RenderDoc
 if (NOT TARGET RenderDoc::API)
     add_library(renderdoc INTERFACE)
     target_include_directories(renderdoc INTERFACE ./renderdoc)
     add_library(RenderDoc::API ALIAS renderdoc)
-endif()
+endif ()
 
 # glslang
 if (NOT TARGET glslang::glslang)
@@ -98,60 +108,60 @@ if (NOT TARGET glslang::glslang)
     add_subdirectory(glslang)
     file(COPY glslang/SPIRV DESTINATION glslang/glslang FILES_MATCHING PATTERN "*.h")
     target_include_directories(SPIRV INTERFACE "${CMAKE_CURRENT_BINARY_DIR}/glslang")
-endif()
+endif ()
 
 # Robin-map
 if (NOT TARGET tsl::robin_map)
     add_subdirectory(robin-map)
-endif()
+endif ()
 
 # Xbyak
 if (NOT TARGET xbyak::xbyak)
     add_subdirectory(xbyak)
-endif()
+endif ()
 
 # MagicEnum
 if (NOT TARGET magic_enum::magic_enum)
     add_subdirectory(magic_enum)
-endif()
+endif ()
 
 # Toml11
 if (NOT TARGET toml11::toml11)
     add_subdirectory(toml11)
-endif()
+endif ()
 
 # xxHash
 if (NOT TARGET xxHash::xxhash)
     add_library(xxhash xxhash/xxhash.h xxhash/xxhash.c)
     target_include_directories(xxhash PUBLIC xxhash)
     add_library(xxHash::xxhash ALIAS xxhash)
-endif()
+endif ()
 
 # Zydis
 if (NOT TARGET Zydis::Zydis)
     option(ZYDIS_BUILD_TOOLS "" OFF)
     option(ZYDIS_BUILD_EXAMPLES "" OFF)
     add_subdirectory(zydis)
-endif()
+endif ()
 
 # Winpthreads
 if (WIN32)
     add_subdirectory(winpthreads)
     target_include_directories(winpthreads INTERFACE winpthreads/include)
-endif()
+endif ()
 
 # sirit
 add_subdirectory(sirit)
 if (WIN32)
     target_compile_options(sirit PUBLIC "-Wno-error=unused-command-line-argument")
-endif()
+endif ()
 
 # half
 if (NOT TARGET half::half)
     add_library(half INTERFACE)
     target_include_directories(half INTERFACE half/include)
     add_library(half::half ALIAS half)
-endif()
+endif ()
 
 if (APPLE)
     # date
@@ -159,17 +169,17 @@ if (APPLE)
         option(BUILD_TZ_LIB "" ON)
         option(USE_SYSTEM_TZ_DB "" ON)
         add_subdirectory(date)
-    endif()
-endif()
+    endif ()
+endif ()
 
 # Dear ImGui
 add_library(Dear_ImGui
-        dear_imgui/imgui.cpp
-        dear_imgui/imgui_demo.cpp
-        dear_imgui/imgui_draw.cpp
-        dear_imgui/imgui_internal.h
-        dear_imgui/imgui_tables.cpp
-        dear_imgui/imgui_widgets.cpp
+    dear_imgui/imgui.cpp
+    dear_imgui/imgui_demo.cpp
+    dear_imgui/imgui_draw.cpp
+    dear_imgui/imgui_internal.h
+    dear_imgui/imgui_tables.cpp
+    dear_imgui/imgui_widgets.cpp
 )
 target_include_directories(Dear_ImGui INTERFACE dear_imgui/)
 
@@ -190,14 +200,14 @@ add_subdirectory(tracy)
 # pugixml
 if (NOT TARGET pugixml::pugixml)
     add_subdirectory(pugixml)
-endif()
+endif ()
 
 # Discord RPC
 if (ENABLE_DISCORD_RPC)
     set(BUILD_EXAMPLES OFF)
     add_subdirectory(discord-rpc/)
     target_include_directories(discord-rpc INTERFACE discord-rpc/include)
-endif()
+endif ()
 
 # GCN Headers
 add_subdirectory(gcn)
