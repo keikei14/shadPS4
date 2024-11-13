@@ -262,7 +262,7 @@ int PS4_SYSV_ABI sceAudio3dPortOpen(OrbisUserServiceUserId user_id,
                                     OrbisAudio3dPortId* id) {
     if (!parameters || parameters->rate != 0 ||
         parameters->buffer_mode > ORBIS_AUDIO3D_BUFFER_ADVANCE_AND_PUSH ||
-        (parameters->granularity == 0 || parameters->granularity > 0xFF ||
+        (parameters->granularity == 0 || parameters->granularity > 256 ||
          parameters->max_objects == 0 || parameters->queue_depth == 0)) {
         LOG_ERROR(Lib_Audio3d, "Invalid parameters");
         return ORBIS_AUDIO3D_ERROR_INVALID_PARAMETER;
@@ -273,7 +273,7 @@ int PS4_SYSV_ABI sceAudio3dPortOpen(OrbisUserServiceUserId user_id,
     }
 
     *id = context->ports.size() + 1;
-    context->ports.emplace_back(*id, parameters, -1);
+    context->ports.emplace_back(*id, *parameters, -1);
     return ORBIS_OK;
 }
 
