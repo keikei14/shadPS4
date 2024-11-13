@@ -75,7 +75,7 @@ public:
     [[nodiscard]] bool IsPortValid(OrbisAudio3dPortId port_id) const;
     [[nodiscard]] bool IsObjectValid(OrbisAudio3dObjectId object_id) const;
 
-    std::vector<std::tuple<OrbisAudio3dPortId, const OrbisAudio3dOpenParameters, s32>> ports{};
+    std::vector<std::tuple<OrbisAudio3dPortId, OrbisAudio3dOpenParameters, s32>> ports{};
     std::vector<OrbisAudio3dObjectId> objects{};
     std::vector<std::pair<OrbisAudio3dAttributeId, OrbisAudio3dAttribute>> attributes{};
 };

@@ -30,7 +30,7 @@ int PS4_SYSV_ABI sceAudio3dAudioOutOpen(
 
     auto port = context->ports[port_id];
 
-    if (len != get<1>(port)->granularity) {
+    if (len != get<1>(port).granularity) {
         return ORBIS_AUDIO3D_ERROR_INVALID_PARAMETER;
     }
 
