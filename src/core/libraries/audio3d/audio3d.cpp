@@ -4,7 +4,6 @@
 #include <magic_enum.hpp>
 
 #include "SDL3_mixer/SDL_mixer.h"
-#include "common/assert.h"
 #include "common/logging/log.h"
 #include "core/libraries/audio3d/audio3d.h"
 #include "core/libraries/audio3d/audio3d_error.h"
@@ -14,7 +13,7 @@
 
 namespace Libraries::Audio3d {
 
-static std::unique_ptr<Audio3d> context{};
+static std::unique_ptr<Audio3dContext> context{};
 
 int PS4_SYSV_ABI sceAudio3dAudioOutClose() {
     LOG_ERROR(Lib_Audio3d, "(STUBBED) called");
@@ -25,7 +24,7 @@ int PS4_SYSV_ABI sceAudio3dAudioOutOpen(
     const OrbisAudio3dPortId port_id, const OrbisUserServiceUserId user_id,
     const AudioOut::OrbisAudioOutPort type, const s32 index, const u32 len, const u32 freq,
     const AudioOut::OrbisAudioOutParamExtendedInformation param) {
-    if (port_id > context->ports.size()) {
+    if (!context->IsPortValid(port_id)) {
         return ORBIS_AUDIO3D_ERROR_INVALID_PORT;
     }
 
@@ -44,7 +43,7 @@ int PS4_SYSV_ABI sceAudio3dAudioOutOpen(
 }
 
 int PS4_SYSV_ABI sceAudio3dAudioOutOutput(const OrbisAudio3dPortId port_id, const void* ptr) {
-    if (port_id > context->ports.size()) {
+    if (!context->IsPortValid(port_id)) {
         return ORBIS_AUDIO3D_ERROR_INVALID_PORT;
     }
 
@@ -60,7 +59,7 @@ int PS4_SYSV_ABI sceAudio3dAudioOutOutputs(AudioOut::OrbisAudioOutOutputParam* p
     return sceAudioOutOutputs(param, num);
 }
 
-// A bed is a preset channel configuration?
+// A bed is a preset channel configuration
 int PS4_SYSV_ABI sceAudio3dBedWrite(OrbisAudio3dPortId port_id, u32 num_channels,
                                     OrbisAudio3dFormat format, const uintptr_t buffer,
                                     u32 num_samples) {
@@ -94,7 +93,7 @@ int PS4_SYSV_ABI sceAudio3dBedWrite2(OrbisAudio3dPortId port_id, u32 num_channel
             return ORBIS_AUDIO3D_ERROR_INVALID_PARAMETER;
         }
 
-        if (port_id > context->ports.size()) {
+        if (!context->IsPortValid(port_id)) {
             return ORBIS_AUDIO3D_ERROR_INVALID_PORT;
         }
 
@@ -145,13 +144,13 @@ int PS4_SYSV_ABI sceAudio3dInitialize(const s64 reserved) {
         return ORBIS_AUDIO3D_ERROR_NOT_READY;
     }
 
-    context = std::make_unique<Audio3d>();
+    context = std::make_unique<Audio3dContext>();
     return ORBIS_OK;
 }
 
 int PS4_SYSV_ABI sceAudio3dObjectReserve(const OrbisAudio3dPortId port_id,
                                          OrbisAudio3dObjectId* id) {
-    if (port_id > context->ports.size()) {
+    if (!context->IsPortValid(port_id)) {
         return ORBIS_AUDIO3D_ERROR_INVALID_PORT;
     }
 
@@ -167,11 +166,11 @@ int PS4_SYSV_ABI sceAudio3dObjectSetAttributes(const OrbisAudio3dPortId port_id,
     LOG_INFO(Lib_Audio3d, "called, port_id = {}, object_id = {}, num_attributes = {}", port_id,
              object_id, num_attributes);
 
-    if (port_id > context->ports.size()) {
+    if (!context->IsPortValid(port_id)) {
         return ORBIS_AUDIO3D_ERROR_INVALID_PORT;
     }
 
-    if (object_id > context->objects.size()) {
+    if (!context->IsObjectValid(port_id)) {
         return ORBIS_AUDIO3D_ERROR_INVALID_OBJECT;
     }
 
@@ -181,8 +180,8 @@ int PS4_SYSV_ABI sceAudio3dObjectSetAttributes(const OrbisAudio3dPortId port_id,
 
     for (size_t i = 0; i < num_attributes; i++) {
         const OrbisAudio3dAttribute attribute = attribute_array[i];
-        LOG_INFO(Lib_Audio3d, "setting attribute {} for object_id: {}", attribute.attribute_id,
-                 object_id);
+        LOG_INFO(Lib_Audio3d, "setting attribute {} for object_id: {}",
+                 magic_enum::enum_name(attribute.attribute_id), object_id);
         context->attributes.emplace_back(attribute.attribute_id, attribute);
     }
 

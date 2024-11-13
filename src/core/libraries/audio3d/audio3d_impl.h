@@ -43,17 +43,37 @@ struct OrbisAudio3dOpenParameters {
     u32 num_beds;
 };
 
+enum AttributeId : u32 {
+    PCM = 0x1,
+    PRIORITY,
+    POSITION,
+    SPREAD,
+    GAIN,
+    PASSTHROUGH,
+    RESET_STATE,
+    APPLICATION_SPECIFIC,
+    AMBISONICS,
+    RESTRICTED,
+    OUTPUT_ROUTE,
+    LATE_REVERB_LEVEL = 0x10001,
+    DOWNMIX_SPREAD_RADIUS,
+    DOWNMIX_SPREAD_HEIGHT_AWARE,
+};
+
 struct OrbisAudio3dAttribute {
-    OrbisAudio3dAttributeId attribute_id;
+    AttributeId attribute_id;
     int : 32; // Padding
     const void* value;
     size_t value_size;
 };
 
-class Audio3d {
+class Audio3dContext {
 public:
-    Audio3d() = default;
-    ~Audio3d() = default;
+    Audio3dContext() = default;
+    ~Audio3dContext() = default;
+
+    [[nodiscard]] bool IsPortValid(OrbisAudio3dPortId port_id) const;
+    [[nodiscard]] bool IsObjectValid(OrbisAudio3dObjectId object_id) const;
 
     std::vector<std::tuple<OrbisAudio3dPortId, const OrbisAudio3dOpenParameters*, s32>> ports{};
     std::vector<OrbisAudio3dObjectId> objects{};
