@@ -49,13 +49,14 @@ int PS4_SYSV_ABI sceAudio3dPortFreeState();
 int PS4_SYSV_ABI sceAudio3dPortGetAttributesSupported();
 int PS4_SYSV_ABI sceAudio3dPortGetList();
 int PS4_SYSV_ABI sceAudio3dPortGetParameters();
-int PS4_SYSV_ABI sceAudio3dPortGetQueueLevel();
+int PS4_SYSV_ABI sceAudio3dPortGetQueueLevel(OrbisAudio3dPortId port_id, u32* queue_level,
+                                             u32* queue_available);
 int PS4_SYSV_ABI sceAudio3dPortGetState();
 int PS4_SYSV_ABI sceAudio3dPortGetStatus();
 int PS4_SYSV_ABI sceAudio3dPortOpen(OrbisUserServiceUserId user_id,
                                     const OrbisAudio3dOpenParameters* parameters,
                                     OrbisAudio3dPortId* id);
-int PS4_SYSV_ABI sceAudio3dPortPush();
+int PS4_SYSV_ABI sceAudio3dPortPush(OrbisAudio3dPortId port_id, SceAudio3dBlocking blocking);
 int PS4_SYSV_ABI sceAudio3dPortQueryDebug();
 int PS4_SYSV_ABI sceAudio3dPortSetAttribute();
 int PS4_SYSV_ABI sceAudio3dReportRegisterHandler();

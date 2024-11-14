@@ -43,6 +43,8 @@ int PS4_SYSV_ABI sceAudio3dAudioOutOpen(
 }
 
 int PS4_SYSV_ABI sceAudio3dAudioOutOutput(const OrbisAudio3dPortId port_id, const void* ptr) {
+    LOG_INFO(Lib_Audio3d, "called, port_id = {}", port_id);
+
     if (!context->IsPortValid(port_id)) {
         return ORBIS_AUDIO3D_ERROR_INVALID_PORT;
     }
@@ -145,6 +147,8 @@ int PS4_SYSV_ABI sceAudio3dInitialize(const s64 reserved) {
     }
 
     context = std::make_unique<Audio3dContext>();
+    AudioOut::sceAudioOutInit();
+    LOG_TRACE(Lib_Audio3d, "init");
     return ORBIS_OK;
 }
 
@@ -242,8 +246,28 @@ int PS4_SYSV_ABI sceAudio3dPortGetParameters() {
     return ORBIS_OK;
 }
 
-int PS4_SYSV_ABI sceAudio3dPortGetQueueLevel() {
-    LOG_ERROR(Lib_Audio3d, "(STUBBED) called");
+int PS4_SYSV_ABI sceAudio3dPortGetQueueLevel(OrbisAudio3dPortId port_id, u32* queue_level,
+                                             u32* queue_available) {
+    LOG_INFO(Lib_Audio3d, "called, port_id = {}", port_id);
+
+    if (!context->IsPortValid(port_id)) {
+        return ORBIS_AUDIO3D_ERROR_INVALID_PORT;
+    }
+
+    if (!queue_level && !queue_available) {
+        return ORBIS_AUDIO3D_ERROR_INVALID_PARAMETER;
+    }
+
+    // TODO: actually implement queues
+
+    if (queue_level) {
+        *queue_level = 0;
+    }
+
+    if (queue_available) {
+        *queue_available = 1;
+    }
+
     return ORBIS_OK;
 }
 
@@ -262,8 +286,8 @@ int PS4_SYSV_ABI sceAudio3dPortOpen(OrbisUserServiceUserId user_id,
                                     OrbisAudio3dPortId* id) {
     if (!parameters || parameters->rate != 0 ||
         parameters->buffer_mode > ORBIS_AUDIO3D_BUFFER_ADVANCE_AND_PUSH ||
-        (parameters->granularity == 0 || parameters->granularity > 256 ||
-         parameters->max_objects == 0 || parameters->queue_depth == 0)) {
+        (parameters->granularity < 256 || parameters->max_objects == 0 ||
+         parameters->queue_depth == 0)) {
         LOG_ERROR(Lib_Audio3d, "Invalid parameters");
         return ORBIS_AUDIO3D_ERROR_INVALID_PARAMETER;
     }
@@ -273,12 +297,25 @@ int PS4_SYSV_ABI sceAudio3dPortOpen(OrbisUserServiceUserId user_id,
     }
 
     *id = context->ports.size() + 1;
-    context->ports.emplace_back(*id, *parameters, -1);
+    // make a copy of it otherwise it'll be garbage data when we access it
+    OrbisAudio3dOpenParameters parameters_copy = *parameters;
+    context->ports.resize(*id + 1);
+    context->ports[*id] = {*id, parameters_copy, -1};
     return ORBIS_OK;
 }
 
-int PS4_SYSV_ABI sceAudio3dPortPush() {
-    LOG_ERROR(Lib_Audio3d, "(STUBBED) called");
+int PS4_SYSV_ABI sceAudio3dPortPush(OrbisAudio3dPortId port_id, SceAudio3dBlocking blocking) {
+    LOG_INFO(Lib_Audio3d, "called, port_id = {}, blocking = {}", port_id,
+             magic_enum::enum_name(blocking));
+
+    if (!context->IsPortValid(port_id)) {
+        return ORBIS_AUDIO3D_ERROR_INVALID_PORT;
+    }
+
+    auto port = context->ports[port_id];
+
+    AudioOut::sceAudioOutOutput(get<2>(port), nullptr);
+
     return ORBIS_OK;
 }
 

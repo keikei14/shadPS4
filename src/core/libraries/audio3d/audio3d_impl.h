@@ -60,6 +60,8 @@ enum AttributeId : u32 {
     DOWNMIX_SPREAD_HEIGHT_AWARE,
 };
 
+enum SceAudio3dBlocking { SCE_AUDIO3D_BLOCKING_ASYNC = 0, SCE_AUDIO3D_BLOCKING_SYNC = 1 };
+
 struct OrbisAudio3dAttribute {
     AttributeId attribute_id;
     int : 32; // Padding

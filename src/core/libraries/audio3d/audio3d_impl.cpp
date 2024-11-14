@@ -13,19 +13,11 @@ using namespace Libraries::Kernel;
 namespace Libraries::Audio3d {
 
 bool Audio3dContext::IsPortValid(const OrbisAudio3dPortId port_id) const {
-    if (port_id > ports.size()) {
-        return false;
-    }
-
-    return true;
+    return port_id <= ports.size();
 }
 
 bool Audio3dContext::IsObjectValid(const OrbisAudio3dObjectId object_id) const {
-    if (object_id > objects.size()) {
-        return false;
-    }
-
-    return true;
+    return object_id <= ports.size();
 }
 
 } // namespace Libraries::Audio3d
