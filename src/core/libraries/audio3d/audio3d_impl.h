@@ -4,6 +4,7 @@
 #pragma once
 
 #include <vector>
+#include <queue>
 
 #include "common/types.h"
 
@@ -76,10 +77,31 @@ public:
 
     [[nodiscard]] bool IsPortValid(OrbisAudio3dPortId port_id) const;
     [[nodiscard]] bool IsObjectValid(OrbisAudio3dObjectId object_id) const;
+    void DeletePort(OrbisAudio3dPortId port_id);
+    void DeleteObject(OrbisAudio3dObjectId object_id);
 
-    std::vector<std::tuple<OrbisAudio3dPortId, OrbisAudio3dOpenParameters, s32>> ports{};
-    std::vector<OrbisAudio3dObjectId> objects{};
-    std::vector<std::pair<OrbisAudio3dAttributeId, OrbisAudio3dAttribute>> attributes{};
+    // To help with HLE; these structs aren't from the library
+
+    struct Port {
+        OrbisAudio3dPortId id;
+        OrbisAudio3dOpenParameters parameters;
+        s32 audioout_handle;
+    };
+
+    struct Object {
+        struct Attribute {
+            OrbisAudio3dAttributeId attribute_id;
+            OrbisAudio3dAttribute value;
+        };
+
+        OrbisAudio3dPortId port_id;
+        OrbisAudio3dObjectId id;
+        std::vector<Attribute> attributes;
+    };
+
+    std::vector<Port> ports{};
+    std::vector<Object> objects{};
+    std::vector<std::queue<OrbisAudio3dObjectId>> queues{};
 };
 
 } // namespace Libraries::Audio3d

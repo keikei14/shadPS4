@@ -30,20 +30,17 @@ int PS4_SYSV_ABI sceAudio3dAudioOutOpen(
 
     auto port = context->ports[port_id];
 
-    if (len != get<1>(port).granularity) {
+    if (len != port.parameters.granularity) {
         return ORBIS_AUDIO3D_ERROR_INVALID_PARAMETER;
     }
 
-    const s32 out_id = sceAudioOutOpen(user_id, type, index, len, freq, param);
-    get<2>(port) = out_id;
-
-    LOG_INFO(Lib_Audio3d, "out_id: {}", out_id);
-
-    return out_id;
+    const s32 handle = sceAudioOutOpen(user_id, type, index, len, freq, param);
+    port.audioout_handle = handle;
+    return handle;
 }
 
 int PS4_SYSV_ABI sceAudio3dAudioOutOutput(const OrbisAudio3dPortId port_id, const void* ptr) {
-    LOG_INFO(Lib_Audio3d, "called, port_id = {}", port_id);
+    LOG_INFO(Lib_Audio3d, "called, port_id = {}, ptr = {}", port_id, ptr);
 
     if (!context->IsPortValid(port_id)) {
         return ORBIS_AUDIO3D_ERROR_INVALID_PORT;
@@ -53,7 +50,7 @@ int PS4_SYSV_ABI sceAudio3dAudioOutOutput(const OrbisAudio3dPortId port_id, cons
         return ORBIS_AUDIO3D_ERROR_INVALID_PARAMETER;
     }
 
-    return AudioOut::sceAudioOutOutput(get<2>(context->ports[port_id]), ptr);
+    return AudioOut::sceAudioOutOutput(context->ports[port_id].audioout_handle, ptr);
 }
 
 int PS4_SYSV_ABI sceAudio3dAudioOutOutputs(AudioOut::OrbisAudioOutOutputParam* param,
@@ -62,6 +59,7 @@ int PS4_SYSV_ABI sceAudio3dAudioOutOutputs(AudioOut::OrbisAudioOutOutputParam* p
 }
 
 // A bed is a preset channel configuration
+
 int PS4_SYSV_ABI sceAudio3dBedWrite(OrbisAudio3dPortId port_id, u32 num_channels,
                                     OrbisAudio3dFormat format, const uintptr_t buffer,
                                     u32 num_samples) {
@@ -99,7 +97,7 @@ int PS4_SYSV_ABI sceAudio3dBedWrite2(OrbisAudio3dPortId port_id, u32 num_channel
             return ORBIS_AUDIO3D_ERROR_INVALID_PORT;
         }
 
-        // TODO: Use SDL mixer? Need to investigate what exactly I'm supposed to handle, docs suck
+        // All this function does is output multichannel audio
 
         AudioOut::sceAudioOutOutput(1, reinterpret_cast<void*>(buffer));
     }
@@ -148,7 +146,6 @@ int PS4_SYSV_ABI sceAudio3dInitialize(const s64 reserved) {
 
     context = std::make_unique<Audio3dContext>();
     AudioOut::sceAudioOutInit();
-    LOG_TRACE(Lib_Audio3d, "init");
     return ORBIS_OK;
 }
 
@@ -158,8 +155,15 @@ int PS4_SYSV_ABI sceAudio3dObjectReserve(const OrbisAudio3dPortId port_id,
         return ORBIS_AUDIO3D_ERROR_INVALID_PORT;
     }
 
-    *id = context->objects.size() + 1;
-    context->objects.push_back(*id);
+    size_t count = context->objects.size();
+
+    if (count == context->ports[port_id].parameters.max_objects) {
+        LOG_ERROR(Lib_Audio3d, "Port {} has reached the maximum number of objects", port_id);
+        return ORBIS_AUDIO3D_ERROR_OUT_OF_RESOURCES;
+    }
+
+    *id = count + 1;
+    context->objects.push_back(Audio3dContext::Object{port_id, *id, {}});
     return ORBIS_OK;
 }
 
@@ -174,7 +178,7 @@ int PS4_SYSV_ABI sceAudio3dObjectSetAttributes(const OrbisAudio3dPortId port_id,
         return ORBIS_AUDIO3D_ERROR_INVALID_PORT;
     }
 
-    if (!context->IsObjectValid(port_id)) {
+    if (!context->IsObjectValid(object_id)) {
         return ORBIS_AUDIO3D_ERROR_INVALID_OBJECT;
     }
 
@@ -184,30 +188,54 @@ int PS4_SYSV_ABI sceAudio3dObjectSetAttributes(const OrbisAudio3dPortId port_id,
 
     for (size_t i = 0; i < num_attributes; i++) {
         const OrbisAudio3dAttribute attribute = attribute_array[i];
-        LOG_INFO(Lib_Audio3d, "setting attribute {} for object_id: {}",
-                 magic_enum::enum_name(attribute.attribute_id), object_id);
-        context->attributes.emplace_back(attribute.attribute_id, attribute);
+        context->objects[object_id].attributes.emplace_back(attribute.attribute_id, attribute);
+        context->queues[port_id].push(object_id);
     }
 
     return ORBIS_OK;
 }
 
-int PS4_SYSV_ABI sceAudio3dObjectUnreserve() {
-    LOG_ERROR(Lib_Audio3d, "(STUBBED) called");
-    return ORBIS_OK;
-}
-
-int PS4_SYSV_ABI sceAudio3dPortAdvance() {
-    LOG_ERROR(Lib_Audio3d, "(STUBBED) called");
-    return ORBIS_OK;
-}
-
-int PS4_SYSV_ABI sceAudio3dPortClose(const OrbisAudio3dPortId id) {
-    if (id > context->ports.size()) {
+int PS4_SYSV_ABI sceAudio3dObjectUnreserve(OrbisAudio3dPortId port_id,
+                                           OrbisAudio3dObjectId object_id) {
+    if (!context->IsPortValid(port_id)) {
         return ORBIS_AUDIO3D_ERROR_INVALID_PORT;
     }
 
-    context->ports.erase(context->ports.begin() + id);
+    if (!context->IsObjectValid(object_id)) {
+        return ORBIS_AUDIO3D_ERROR_INVALID_OBJECT;
+    }
+
+    context->DeleteObject(object_id);
+    return ORBIS_OK;
+}
+
+int PS4_SYSV_ABI sceAudio3dPortAdvance(OrbisAudio3dPortId port_id) {
+    LOG_INFO(Lib_Audio3d, "called, port_id = {}", port_id);
+
+    if (!context->IsPortValid(port_id)) {
+        return ORBIS_AUDIO3D_ERROR_INVALID_PORT;
+    }
+
+    if (context->ports[port_id].parameters.buffer_mode == ORBIS_AUDIO3D_BUFFER_NO_ADVANCE) {
+        LOG_ERROR(Lib_Audio3d, "Port {} has no advance capability", port_id);
+        return ORBIS_AUDIO3D_ERROR_NOT_SUPPORTED;
+    }
+
+    if (context->queues[port_id].empty()) {
+        LOG_ERROR(Lib_Audio3d, "Queue is empty, cannot pop port {}", port_id);
+        return ORBIS_OK;
+    }
+
+    context->queues[port_id].pop();
+    return ORBIS_OK;
+}
+
+int PS4_SYSV_ABI sceAudio3dPortClose(const OrbisAudio3dPortId port_id) {
+    if (port_id > context->ports.size()) {
+        return ORBIS_AUDIO3D_ERROR_INVALID_PORT;
+    }
+
+    context->DeletePort(port_id);
     return ORBIS_OK;
 }
 
@@ -258,14 +286,18 @@ int PS4_SYSV_ABI sceAudio3dPortGetQueueLevel(OrbisAudio3dPortId port_id, u32* qu
         return ORBIS_AUDIO3D_ERROR_INVALID_PARAMETER;
     }
 
-    // TODO: actually implement queues
+    auto size = context->queues[port_id].size();
+    auto parameters = context->ports[port_id].parameters;
 
     if (queue_level) {
-        *queue_level = 0;
+        *queue_level = size;
     }
 
     if (queue_available) {
-        *queue_available = 1;
+        u32 queue_depth = parameters.queue_depth;
+        u32 available = parameters.queue_depth - context->queues[port_id].size();
+        LOG_INFO(Lib_Audio3d, "queue_depth = {}, size = {}", queue_depth, size);
+        *queue_available = available;
     }
 
     return ORBIS_OK;
@@ -301,6 +333,8 @@ int PS4_SYSV_ABI sceAudio3dPortOpen(OrbisUserServiceUserId user_id,
     OrbisAudio3dOpenParameters parameters_copy = *parameters;
     context->ports.resize(*id + 1);
     context->ports[*id] = {*id, parameters_copy, -1};
+    context->queues.emplace_back();
+    LOG_INFO(Lib_Audio3d, "size: {}", context->ports.size());
     return ORBIS_OK;
 }
 
@@ -314,7 +348,32 @@ int PS4_SYSV_ABI sceAudio3dPortPush(OrbisAudio3dPortId port_id, SceAudio3dBlocki
 
     auto port = context->ports[port_id];
 
-    AudioOut::sceAudioOutOutput(get<2>(port), nullptr);
+    if (port.parameters.buffer_mode != ORBIS_AUDIO3D_BUFFER_ADVANCE_AND_PUSH) {
+        LOG_ERROR(Lib_Audio3d, "Port {} has no push capability", port_id);
+        return ORBIS_AUDIO3D_ERROR_NOT_SUPPORTED;
+    }
+
+    auto queue_count = context->queues.size();
+    LOG_INFO(Lib_Audio3d, "queue_count = {}", queue_count);
+
+    auto queue = context->queues[port_id];
+
+    if (queue.empty()) {
+        LOG_ERROR(Lib_Audio3d, "Queue is empty, cannot push port {}", port_id);
+        return ORBIS_OK;
+    }
+
+    auto object = context->objects[queue.front()];
+
+    for (const auto attribute : object.attributes) {
+        if (AttributeId(attribute.attribute_id) != PCM) {
+            continue;
+        }
+
+        AudioOut::sceAudioOutOutput(1, attribute.value.value);
+    }
+
+    queue.pop();
 
     return ORBIS_OK;
 }
@@ -354,7 +413,7 @@ int PS4_SYSV_ABI sceAudio3dTerminate() {
         return ORBIS_AUDIO3D_ERROR_NOT_READY;
     }
 
-    LOG_ERROR(Lib_Audio3d, "(STUBBED) called");
+    LOG_INFO(Lib_Audio3d, "term");
     return ORBIS_OK;
 }
 

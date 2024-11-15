@@ -17,7 +17,15 @@ bool Audio3dContext::IsPortValid(const OrbisAudio3dPortId port_id) const {
 }
 
 bool Audio3dContext::IsObjectValid(const OrbisAudio3dObjectId object_id) const {
-    return object_id <= ports.size();
+    return object_id <= objects.size();
+}
+
+void Audio3dContext::DeletePort(OrbisAudio3dPortId port_id) {
+    ports.erase(ports.begin() + port_id);
+}
+
+void Audio3dContext::DeleteObject(OrbisAudio3dObjectId object_id) {
+    objects.erase(objects.begin() + object_id);
 }
 
 } // namespace Libraries::Audio3d
