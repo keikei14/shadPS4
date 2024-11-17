@@ -89,19 +89,14 @@ public:
     };
 
     struct Object {
-        struct Attribute {
-            OrbisAudio3dAttributeId attribute_id;
-            OrbisAudio3dAttribute value;
-        };
-
         OrbisAudio3dPortId port_id;
         OrbisAudio3dObjectId id;
-        std::vector<Attribute> attributes;
+        std::vector<OrbisAudio3dAttribute> attributes;
     };
 
     std::vector<Port> ports{};
     std::vector<Object> objects{};
-    std::vector<std::queue<OrbisAudio3dObjectId>> queues{};
+    std::vector<std::queue<std::pair<OrbisAudio3dObjectId, void*>>> queues{}; // object optional
 };
 
 } // namespace Libraries::Audio3d

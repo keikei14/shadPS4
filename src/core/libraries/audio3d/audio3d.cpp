@@ -97,9 +97,7 @@ int PS4_SYSV_ABI sceAudio3dBedWrite2(OrbisAudio3dPortId port_id, u32 num_channel
             return ORBIS_AUDIO3D_ERROR_INVALID_PORT;
         }
 
-        // All this function does is output multichannel audio
-
-        AudioOut::sceAudioOutOutput(1, reinterpret_cast<void*>(buffer));
+        context->queues[port_id].emplace(-1, reinterpret_cast<void*>(buffer));
     }
 
     return ORBIS_OK;
@@ -188,8 +186,8 @@ int PS4_SYSV_ABI sceAudio3dObjectSetAttributes(const OrbisAudio3dPortId port_id,
 
     for (size_t i = 0; i < num_attributes; i++) {
         const OrbisAudio3dAttribute attribute = attribute_array[i];
-        context->objects[object_id].attributes.emplace_back(attribute.attribute_id, attribute);
-        context->queues[port_id].push(object_id);
+        context->objects[object_id].attributes.emplace_back(attribute);
+        context->queues[port_id].emplace(object_id, nullptr);
     }
 
     return ORBIS_OK;
@@ -329,11 +327,12 @@ int PS4_SYSV_ABI sceAudio3dPortOpen(OrbisUserServiceUserId user_id,
     }
 
     *id = context->ports.size() + 1;
-    // make a copy of it otherwise it'll be garbage data when we access it
+    // Make a copy to avoid dangling references
     OrbisAudio3dOpenParameters parameters_copy = *parameters;
     context->ports.resize(*id + 1);
     context->ports[*id] = {*id, parameters_copy, -1};
-    context->queues.emplace_back();
+    context->queues.resize(*id + 1);
+    context->queues[*id] = {};
     LOG_INFO(Lib_Audio3d, "size: {}", context->ports.size());
     return ORBIS_OK;
 }
@@ -353,9 +352,6 @@ int PS4_SYSV_ABI sceAudio3dPortPush(OrbisAudio3dPortId port_id, SceAudio3dBlocki
         return ORBIS_AUDIO3D_ERROR_NOT_SUPPORTED;
     }
 
-    auto queue_count = context->queues.size();
-    LOG_INFO(Lib_Audio3d, "queue_count = {}", queue_count);
-
     auto queue = context->queues[port_id];
 
     if (queue.empty()) {
@@ -363,14 +359,25 @@ int PS4_SYSV_ABI sceAudio3dPortPush(OrbisAudio3dPortId port_id, SceAudio3dBlocki
         return ORBIS_OK;
     }
 
-    auto object = context->objects[queue.front()];
+    auto front = queue.front();
+
+    // No object, but there's a PCM buffer from BedWrite2
+    if (front.first == u32(-1) && front.second) {
+        AudioOut::sceAudioOutOutput(1, front.second);
+        queue.pop();
+        return ORBIS_OK;
+    } else if (!front.first && !front.second) {
+        return ORBIS_OK;
+    }
+
+    auto object = context->objects[front.first];
 
     for (const auto attribute : object.attributes) {
         if (AttributeId(attribute.attribute_id) != PCM) {
             continue;
         }
 
-        AudioOut::sceAudioOutOutput(1, attribute.value.value);
+        AudioOut::sceAudioOutOutput(1, attribute.value);
     }
 
     queue.pop();
