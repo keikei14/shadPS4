@@ -6,6 +6,9 @@
 #include "core/libraries/libs.h"
 #include "core/libraries/network/http.h"
 
+#define CPPHTTPLIB_OPENSSL_SUPPORT
+#include <httplib.h>
+
 namespace Libraries::Http {
 
 int PS4_SYSV_ABI sceHttpAbortRequest() {
@@ -29,6 +32,7 @@ int PS4_SYSV_ABI sceHttpAddCookie() {
 }
 
 int PS4_SYSV_ABI sceHttpAddQuery() {
+    httplib::SSLClient cli("localhost:1234"); // host
     LOG_ERROR(Lib_Http, "(STUBBED) called");
     return ORBIS_OK;
 }

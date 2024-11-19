@@ -199,5 +199,16 @@ if (ENABLE_DISCORD_RPC)
     target_include_directories(discord-rpc INTERFACE discord-rpc/include)
 endif()
 
+# OpenSSL
+if (NOT TARGET OpenSSL::SSL AND WIN32)
+    add_subdirectory(openssl)
+else()
+    message(FATAL_ERROR "Please install OpenSSL with your package manager!") # todo: find prebuilt for linux too if they exist
+endif()
+
+# httplib
+set(HTTPLIB_INSTALL OFF)
+add_subdirectory(httplib)
+
 # GCN Headers
 add_subdirectory(gcn)
