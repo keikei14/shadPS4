@@ -173,9 +173,8 @@ int PS4_SYSV_ABI sceAudio3dPortOpen(OrbisUserServiceUserId user_id,
     return context->PortOpen(user_id, parameters, id);
 }
 
-int PS4_SYSV_ABI sceAudio3dPortPush() {
-    LOG_ERROR(Lib_Audio3d, "(STUBBED) called");
-    return ORBIS_OK;
+int PS4_SYSV_ABI sceAudio3dPortPush(OrbisAudio3dPortId port_id, OrbisAudio3dBlocking blocking) {
+    return context->PortPush(port_id, blocking);
 }
 
 int PS4_SYSV_ABI sceAudio3dPortQueryDebug() {

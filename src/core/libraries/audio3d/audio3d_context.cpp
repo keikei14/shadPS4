@@ -135,11 +135,6 @@ int Audio3dContext::ObjectSetAttributes(OrbisAudio3dPortId port_id, OrbisAudio3d
 
     auto& queue = m_queues[port_id];
 
-    if (!ValidateQueueObject(port_id, object_id)) {
-        LOG_DEBUG(Lib_Audio3d, "invalid object");
-        return ORBIS_AUDIO3D_ERROR_INVALID_OBJECT;
-    }
-
     if (num_attributes == 0 || !attribute_array) {
         LOG_DEBUG(Lib_Audio3d, "invalid parameter");
         return ORBIS_AUDIO3D_ERROR_INVALID_PARAMETER;
@@ -157,6 +152,8 @@ int Audio3dContext::ObjectSetAttributes(OrbisAudio3dPortId port_id, OrbisAudio3d
 }
 
 int Audio3dContext::PortAdvance(OrbisAudio3dPortId port_id) {
+    LOG_DEBUG(Lib_Audio3d, "called");
+
     if (!ValidatePort(port_id)) {
         LOG_DEBUG(Lib_Audio3d, "invalid port");
         return ORBIS_AUDIO3D_ERROR_INVALID_PORT;
@@ -174,7 +171,7 @@ int Audio3dContext::PortAdvance(OrbisAudio3dPortId port_id) {
         return ORBIS_OK;
     }
 
-    queue.pop();
+    // queue.pop();
     return ORBIS_OK;
 }
 
@@ -216,8 +213,8 @@ int Audio3dContext::PortGetQueueLevel(OrbisAudio3dPortId port_id, u32* queue_lev
 int Audio3dContext::PortOpen(OrbisUserServiceUserId user_id,
                              const OrbisAudio3dOpenParameters* parameters, OrbisAudio3dPortId* id) {
     if (!parameters || parameters->buffer_mode > ORBIS_AUDIO3D_BUFFER_ADVANCE_AND_PUSH ||
-        (parameters->num_beds & 0xFFFFFFFE) != 2 || !parameters->queue_depth ||
-        !parameters->max_objects || parameters->granularity < 0x100) {
+        parameters->num_beds != 2 || !parameters->queue_depth || !parameters->max_objects ||
+        parameters->granularity < 0x100) {
         LOG_DEBUG(Lib_Audio3d, "invalid parameters");
         return ORBIS_AUDIO3D_ERROR_INVALID_PARAMETER;
     }
@@ -231,23 +228,56 @@ int Audio3dContext::PortOpen(OrbisUserServiceUserId user_id,
     return ORBIS_OK;
 }
 
-u32 Audio3dContext::CreateQueueObject(u32 port_id,
-                                      const std::vector<OrbisAudio3dAttribute>& attributes,
-                                      void* pcm) {
-    if (m_ports.find(port_id) == m_ports.end()) {
+int Audio3dContext::PortPush(OrbisAudio3dPortId port_id, OrbisAudio3dBlocking blocking) {
+    if (!ValidatePort(port_id)) {
         LOG_DEBUG(Lib_Audio3d, "invalid port");
         return ORBIS_AUDIO3D_ERROR_INVALID_PORT;
     }
 
+    auto port = m_ports[port_id];
+
+    if (port.parameters.buffer_mode != ORBIS_AUDIO3D_BUFFER_ADVANCE_AND_PUSH) {
+        LOG_DEBUG(Lib_Audio3d, "not supported");
+        return ORBIS_AUDIO3D_ERROR_NOT_SUPPORTED;
+    }
+
+    auto& queue = m_queues[port_id];
+
+    if (queue.empty()) {
+        LOG_DEBUG(Lib_Audio3d, "no objects, can't push");
+        return ORBIS_OK;
+    }
+
+    for (int i = 0; i < queue.size(); i++) {
+        auto& queue_object = queue.front();
+        if (queue_object.pcm) {
+            AudioOut::sceAudioOutOutput(port.audio_out_handle.value(), queue_object.pcm);
+        }
+        queue.pop();
+    }
+
+    return ORBIS_OK;
+}
+
+u32 Audio3dContext::CreateQueueObject(u32 port_id,
+                                      const std::vector<OrbisAudio3dAttribute>& attributes,
+                                      void* pcm) {
+    if (!ValidatePort(port_id)) {
+        LOG_DEBUG(Lib_Audio3d, "invalid port");
+        return ORBIS_AUDIO3D_ERROR_INVALID_PORT;
+    }
+
+    auto& queue = m_queues[port_id];
+
     if (pcm) {
         LOG_DEBUG(Lib_Audio3d, "pcm");
-        m_queues[port_id].emplace(std::nullopt, std::nullopt, pcm);
+        queue.emplace(std::nullopt, std::nullopt, pcm);
         return ORBIS_OK;
     }
 
     LOG_DEBUG(Lib_Audio3d, "no pcm");
-    u32 id = m_queues[port_id].size() + 1;
-    m_queues[port_id].emplace(id, attributes, nullptr);
+    u32 id = queue.size() + 1;
+    queue.emplace(id, attributes, nullptr);
     return id;
 }
 

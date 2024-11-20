@@ -34,6 +34,8 @@ enum OrbisAudio3dOutputRoute {
     ORBIS_AUDIO3D_OUTPUT_TV_ONLY = 0x2,
 };
 
+enum OrbisAudio3dBlocking { ORBIS_AUDIO3D_BLOCKING_ASYNC = 0, ORBIS_AUDIO3D_BLOCKING_SYNC = 1 };
+
 struct OrbisAudio3dOpenParameters {
     size_t size_this;
     u32 granularity;
@@ -98,7 +100,7 @@ int PS4_SYSV_ABI sceAudio3dPortGetStatus();
 int PS4_SYSV_ABI sceAudio3dPortOpen(OrbisUserServiceUserId user_id,
                                     const OrbisAudio3dOpenParameters* parameters,
                                     OrbisAudio3dPortId* id);
-int PS4_SYSV_ABI sceAudio3dPortPush();
+int PS4_SYSV_ABI sceAudio3dPortPush(OrbisAudio3dPortId port_id, OrbisAudio3dBlocking blocking);
 int PS4_SYSV_ABI sceAudio3dPortQueryDebug();
 int PS4_SYSV_ABI sceAudio3dPortSetAttribute();
 int PS4_SYSV_ABI sceAudio3dReportRegisterHandler();

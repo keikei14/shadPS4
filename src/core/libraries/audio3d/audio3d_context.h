@@ -30,6 +30,7 @@ public:
     int PortGetQueueLevel(OrbisAudio3dPortId port_id, u32* queue_level, u32* queue_available);
     int PortOpen(OrbisUserServiceUserId user_id, const OrbisAudio3dOpenParameters* parameters,
                  OrbisAudio3dPortId* id);
+    int PortPush(OrbisAudio3dPortId port_id, OrbisAudio3dBlocking blocking);
 
 private:
     struct Port {
