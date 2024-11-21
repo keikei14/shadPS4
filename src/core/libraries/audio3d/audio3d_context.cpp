@@ -248,14 +248,13 @@ int Audio3dContext::PortPush(OrbisAudio3dPortId port_id, OrbisAudio3dBlocking bl
         return ORBIS_OK;
     }
 
-    for (int i = 0; i < queue.size(); i++) {
-        auto& queue_object = queue.front();
-        if (queue_object.pcm) {
-            AudioOut::sceAudioOutOutput(port.audio_out_handle.value(), queue_object.pcm);
-        }
-        queue.pop();
+    auto& queue_object = queue.front();
+
+    if (queue_object.pcm) {
+        AudioOut::sceAudioOutOutput(port.audio_out_handle.value(), queue_object.pcm);
     }
 
+    queue.pop();
     return ORBIS_OK;
 }
 
