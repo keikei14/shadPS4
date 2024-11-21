@@ -37,7 +37,7 @@ int Audio3dContext::AudioOutOpen(OrbisAudio3dPortId port_id, OrbisUserServiceUse
 
     port.audio_out_handle = ret;
     m_ports[port_id] = port;
-    return ORBIS_OK;
+    return ret;
 }
 
 int Audio3dContext::AudioOutOutput(s32 handle, void* ptr) {
@@ -171,7 +171,7 @@ int Audio3dContext::PortAdvance(OrbisAudio3dPortId port_id) {
         return ORBIS_OK;
     }
 
-    // queue.pop();
+    queue.pop();
     return ORBIS_OK;
 }
 
