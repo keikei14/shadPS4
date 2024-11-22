@@ -5,130 +5,109 @@
 
 #include "common/types.h"
 
-#include <stddef.h>
-
 namespace Core::Loader {
 class SymbolsResolver;
 }
 
 namespace Libraries::Audio3d {
 
-class Audio3d;
-
-typedef int OrbisUserServiceUserId;
-typedef unsigned int OrbisAudio3dPortId;
-typedef unsigned int OrbisAudio3dObjectId;
-typedef unsigned int OrbisAudio3dAttributeId;
-
-enum OrbisAudio3dFormat {
-    ORBIS_AUDIO3D_FORMAT_S16 = 0,  // s16
-    ORBIS_AUDIO3D_FORMAT_FLOAT = 1 // f32
-};
+using OrbisUserServiceUserId = s32;
+using OrbisAudio3dPortId = u32;
+using OrbisAudio3dObjectId = u32;
 
 enum OrbisAudio3dRate { ORBIS_AUDIO3D_RATE_48000 = 0 };
 
 enum OrbisAudio3dBufferMode {
     ORBIS_AUDIO3D_BUFFER_NO_ADVANCE = 0,
-    ORBIS_AUDIO3D_BUFFER_ADVANCE_NO_PUSH = 1,
-    ORBIS_AUDIO3D_BUFFER_ADVANCE_AND_PUSH = 2
+    ORBIS_AUDIO3D_BUFFER_ADVANCE_NO_PUSH,
+    ORBIS_AUDIO3D_BUFFER_ADVANCE_AND_PUSH,
+};
+
+enum OrbisAudio3dFormat {
+    ORBIS_AUDIO3D_FORMAT_S16 = 0x0,
+    ORBIS_AUDIO3D_FORMAT_FLOAT = 0x1,
+};
+
+enum OrbisAudio3dOutputRoute {
+    ORBIS_AUDIO3D_OUTPUT_BOTH = 0x0,
+    ORBIS_AUDIO3D_OUTPUT_HMU_ONLY = 0x1,
+    ORBIS_AUDIO3D_OUTPUT_TV_ONLY = 0x2,
 };
 
 enum OrbisAudio3dBlocking { ORBIS_AUDIO3D_BLOCKING_ASYNC = 0, ORBIS_AUDIO3D_BLOCKING_SYNC = 1 };
 
-enum OrbisAudio3dPassthrough {
-    ORBIS_AUDIO3D_PASSTHROUGH_NONE = 0,
-    ORBIS_AUDIO3D_PASSTHROUGH_LEFT = 1,
-    ORBIS_AUDIO3D_PASSTHROUGH_RIGHT = 2
-};
-
-enum OrbisAudio3dOutputRoute {
-    ORBIS_AUDIO3D_OUTPUT_BOTH = 0,
-    ORBIS_AUDIO3D_OUTPUT_HMU_ONLY = 1,
-    ORBIS_AUDIO3D_OUTPUT_TV_ONLY = 2
-};
-
-enum OrbisAudio3dAmbisonics {
-    ORBIS_AUDIO3D_AMBISONICS_NONE = ~0,
-    ORBIS_AUDIO3D_AMBISONICS_W = 0,
-    ORBIS_AUDIO3D_AMBISONICS_X = 1,
-    ORBIS_AUDIO3D_AMBISONICS_Y = 2,
-    ORBIS_AUDIO3D_AMBISONICS_Z = 3,
-    ORBIS_AUDIO3D_AMBISONICS_R = 4,
-    ORBIS_AUDIO3D_AMBISONICS_S = 5,
-    ORBIS_AUDIO3D_AMBISONICS_T = 6,
-    ORBIS_AUDIO3D_AMBISONICS_U = 7,
-    ORBIS_AUDIO3D_AMBISONICS_V = 8,
-    ORBIS_AUDIO3D_AMBISONICS_K = 9,
-    ORBIS_AUDIO3D_AMBISONICS_L = 10,
-    ORBIS_AUDIO3D_AMBISONICS_M = 11,
-    ORBIS_AUDIO3D_AMBISONICS_N = 12,
-    ORBIS_AUDIO3D_AMBISONICS_O = 13,
-    ORBIS_AUDIO3D_AMBISONICS_P = 14,
-    ORBIS_AUDIO3D_AMBISONICS_Q = 15
-};
-
-static const OrbisAudio3dAttributeId s_sceAudio3dAttributePcm = 0x00000001;
-static const OrbisAudio3dAttributeId s_sceAudio3dAttributePriority = 0x00000002;
-static const OrbisAudio3dAttributeId s_sceAudio3dAttributePosition = 0x00000003;
-static const OrbisAudio3dAttributeId s_sceAudio3dAttributeSpread = 0x00000004;
-static const OrbisAudio3dAttributeId s_sceAudio3dAttributeGain = 0x00000005;
-static const OrbisAudio3dAttributeId s_sceAudio3dAttributePassthrough = 0x00000006;
-static const OrbisAudio3dAttributeId s_sceAudio3dAttributeResetState = 0x00000007;
-static const OrbisAudio3dAttributeId s_sceAudio3dAttributeApplicationSpecific = 0x00000008;
-static const OrbisAudio3dAttributeId s_sceAudio3dAttributeAmbisonics = 0x00000009;
-static const OrbisAudio3dAttributeId s_sceAudio3dAttributeRestricted = 0x0000000A;
-static const OrbisAudio3dAttributeId s_sceAudio3dAttributeOutputRoute = 0x0000000B;
-static const OrbisAudio3dAttributeId s_sceAudio3dAttributeLateReverbLevel = 0x00010001;
-static const OrbisAudio3dAttributeId s_sceAudio3dAttributeDownmixSpreadRadius = 0x00010002;
-static const OrbisAudio3dAttributeId s_sceAudio3dAttributeDownmixSpreadHeightAware = 0x00010003;
-
-struct OrbisAudio3dSpeakerArray;
-using OrbisAudio3dSpeakerArrayHandle = OrbisAudio3dSpeakerArray*; // head
-
 struct OrbisAudio3dOpenParameters {
-    size_t szSizeThis;
-    unsigned int uiGranularity;
-    OrbisAudio3dRate eRate;
-    unsigned int uiMaxObjects;
-    unsigned int uiQueueDepth;
-    OrbisAudio3dBufferMode eBufferMode;
-    char padding[32];
-    unsigned int uiNumBeds;
+    size_t size_this;
+    u32 granularity;
+    OrbisAudio3dRate rate;
+    u32 max_objects;
+    u32 queue_depth;
+    OrbisAudio3dBufferMode buffer_mode;
+    int : 32; // Padding
+    u32 num_beds;
 };
+
+static_assert(sizeof(OrbisAudio3dOpenParameters) == 0x28);
 
 struct OrbisAudio3dAttribute {
-    OrbisAudio3dAttributeId uiAttributeId;
-    char padding[32];
-    const void* pValue;
-    size_t szValue;
+    u32 attribute_id;
+    int : 32; // Padding
+    const void* value;
+    size_t value_size;
 };
 
-struct OrbisAudio3dPosition {
-    float fX;
-    float fY;
-    float fZ;
-};
+static_assert(sizeof(OrbisAudio3dAttribute) == 0x18);
 
-struct OrbisAudio3dPcm {
-    OrbisAudio3dFormat eFormat;
-    const void* pSampleBuffer;
-    unsigned int uiNumSamples;
-};
-
-struct OrbisAudio3dSpeakerArrayParameters {
-    OrbisAudio3dPosition* pSpeakerPosition;
-    unsigned int uiNumSpeakers;
-    bool bIs3d;
-    void* pBuffer;
-    size_t szSize;
-};
-
-struct OrbisAudio3dApplicationSpecific {
-    size_t szSizeThis;
-    u8 cApplicationSpecific[32];
-};
-
-void PS4_SYSV_ABI sceAudio3dGetDefaultOpenParameters(OrbisAudio3dOpenParameters* sParameters);
+int PS4_SYSV_ABI sceAudio3dAudioOutClose();
+int PS4_SYSV_ABI sceAudio3dAudioOutOpen(OrbisAudio3dPortId port_id, OrbisUserServiceUserId user_id,
+                                        AudioOut::OrbisAudioOutPort type, s32 index, u32 len,
+                                        u32 freq,
+                                        AudioOut::OrbisAudioOutParamExtendedInformation param);
+int PS4_SYSV_ABI sceAudio3dAudioOutOutput(s32 handle, void* ptr);
+int PS4_SYSV_ABI sceAudio3dAudioOutOutputs(AudioOut::OrbisAudioOutOutputParam* param, uint32_t num);
+int PS4_SYSV_ABI sceAudio3dBedWrite(OrbisAudio3dPortId port_id, u32 num_channels,
+                                    OrbisAudio3dFormat format, uintptr_t buffer, u32 num_samples);
+int PS4_SYSV_ABI sceAudio3dBedWrite2(OrbisAudio3dPortId port_id, u32 num_channels,
+                                     OrbisAudio3dFormat format, uintptr_t buffer, u32 num_samples,
+                                     OrbisAudio3dOutputRoute output_route, bool restricted);
+int PS4_SYSV_ABI sceAudio3dCreateSpeakerArray();
+int PS4_SYSV_ABI sceAudio3dDeleteSpeakerArray();
+int PS4_SYSV_ABI sceAudio3dGetDefaultOpenParameters();
+int PS4_SYSV_ABI sceAudio3dGetSpeakerArrayMemorySize();
+int PS4_SYSV_ABI sceAudio3dGetSpeakerArrayMixCoefficients();
+int PS4_SYSV_ABI sceAudio3dGetSpeakerArrayMixCoefficients2();
+int PS4_SYSV_ABI sceAudio3dInitialize(const s64 reserved);
+int PS4_SYSV_ABI sceAudio3dObjectReserve(const OrbisAudio3dPortId port_id,
+                                         OrbisAudio3dObjectId* id);
+int PS4_SYSV_ABI sceAudio3dObjectSetAttributes(OrbisAudio3dPortId port_id,
+                                               OrbisAudio3dObjectId object_id,
+                                               size_t num_attributes,
+                                               const OrbisAudio3dAttribute* attribute_array);
+int PS4_SYSV_ABI sceAudio3dObjectUnreserve();
+int PS4_SYSV_ABI sceAudio3dPortAdvance(OrbisAudio3dPortId port_id);
+int PS4_SYSV_ABI sceAudio3dPortClose(OrbisAudio3dPortId port_id);
+int PS4_SYSV_ABI sceAudio3dPortCreate();
+int PS4_SYSV_ABI sceAudio3dPortDestroy();
+int PS4_SYSV_ABI sceAudio3dPortFlush();
+int PS4_SYSV_ABI sceAudio3dPortFreeState();
+int PS4_SYSV_ABI sceAudio3dPortGetAttributesSupported();
+int PS4_SYSV_ABI sceAudio3dPortGetList();
+int PS4_SYSV_ABI sceAudio3dPortGetParameters();
+int PS4_SYSV_ABI sceAudio3dPortGetQueueLevel(OrbisAudio3dPortId port_id, u32* queue_level,
+                                             u32* queue_available);
+int PS4_SYSV_ABI sceAudio3dPortGetState();
+int PS4_SYSV_ABI sceAudio3dPortGetStatus();
+int PS4_SYSV_ABI sceAudio3dPortOpen(OrbisUserServiceUserId user_id,
+                                    const OrbisAudio3dOpenParameters* parameters,
+                                    OrbisAudio3dPortId* id);
+int PS4_SYSV_ABI sceAudio3dPortPush(OrbisAudio3dPortId port_id, OrbisAudio3dBlocking blocking);
+int PS4_SYSV_ABI sceAudio3dPortQueryDebug();
+int PS4_SYSV_ABI sceAudio3dPortSetAttribute();
+int PS4_SYSV_ABI sceAudio3dReportRegisterHandler();
+int PS4_SYSV_ABI sceAudio3dReportUnregisterHandler();
+int PS4_SYSV_ABI sceAudio3dSetGpuRenderer();
+int PS4_SYSV_ABI sceAudio3dStrError();
+int PS4_SYSV_ABI sceAudio3dTerminate();
 
 void RegisterlibSceAudio3d(Core::Loader::SymbolsResolver* sym);
 } // namespace Libraries::Audio3d

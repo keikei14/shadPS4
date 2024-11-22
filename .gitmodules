@@ -105,3 +105,6 @@
 [submodule "externals/libpng"]
 	path = externals/libpng
 	url = https://github.com/pnggroup/libpng
+[submodule "externals/SDL_mixer"]
+	path = externals/SDL_mixer
+	url = https://github.com/libsdl-org/SDL_mixer.git
