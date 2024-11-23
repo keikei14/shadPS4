@@ -213,8 +213,7 @@ int Audio3dContext::PortGetQueueLevel(OrbisAudio3dPortId port_id, u32* queue_lev
 int Audio3dContext::PortOpen(OrbisUserServiceUserId user_id,
                              const OrbisAudio3dOpenParameters* parameters, OrbisAudio3dPortId* id) {
     if (!parameters || parameters->buffer_mode > ORBIS_AUDIO3D_BUFFER_ADVANCE_AND_PUSH ||
-        !parameters->queue_depth || !parameters->max_objects ||
-        parameters->granularity < 0x100) {
+        !parameters->queue_depth || !parameters->max_objects || parameters->granularity < 0x100) {
         LOG_DEBUG(Lib_Audio3d, "invalid parameters");
         return ORBIS_AUDIO3D_ERROR_INVALID_PARAMETER;
     }
